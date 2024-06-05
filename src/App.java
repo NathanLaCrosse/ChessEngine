@@ -24,7 +24,7 @@ public class App extends Application {
         StackPane root = new StackPane();
 
         root.getChildren().add(cg.getGuiComponent());
-        cg.createNewChessGame(new Player(true), new RandBot(false));
+        cg.createNewChessGame(new RandBot(true), new RandBot(false));
 
         primaryStage.setTitle("Hello World");
         primaryStage.setScene(new Scene(root, 800, 600));

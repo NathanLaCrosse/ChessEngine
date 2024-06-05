@@ -4,7 +4,7 @@
 
 import java.util.LinkedList;
 
-import javafx.concurrent.Task;
+import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -61,37 +61,13 @@ public class ChessGame {
         this.player1 = player1;
         this.player2 = player2;
 
-        updateSprites();
-
-        // Task<Void> gameTask = new Task<Void>() {
-        //     @Override
-        //     protected Void call() throws Exception {
-        //         while(!nextTurn()) {
-        //             updateSprites();
-        //             System.out.println("Turn done!");
-        //         }
-
-        //         return null;
-        //     }
-        // };
-
-        Runnable task = new Runnable() {
-
-            @Override
-            public void run() {
-                while(!nextTurn()) {
-                    updateSprites();
-                    System.out.println("Turn done!");
-                }
-            }
-            
-        };
-
-        new Thread(task).start();
+        // create and run the game's thread process
+        GameThread t = new GameThread(this);
+        t.start();
     }
 
     // returns true if the game has ended
-    private boolean nextTurn() {
+    protected boolean nextTurn() {
         validMoves = gameBoard.generateMoves(turn);
 
         Move moveToPlay = currentPlayer().selectMove(gameBoard);
@@ -146,6 +122,27 @@ public class ChessGame {
             }
         }
 
+    }
+}
+
+// this thread runs the game on the javafx thread in order to not have conflict with it
+class GameThread extends Thread {
+    private ChessGame cg;
+
+    public GameThread(ChessGame cg) {
+        this.cg = cg;
+    }
+
+    @Override
+    public void run() {
+        Platform.runLater(() -> {
+            boolean keepGoing = cg.nextTurn();
+            cg.updateSprites();
+            if(!keepGoing) {
+                GameThread t2 = new GameThread(cg);
+                t2.start();
+            }
+        });
     }
 }
 
