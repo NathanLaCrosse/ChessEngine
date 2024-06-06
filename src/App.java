@@ -3,6 +3,7 @@ import javafx.scene.Scene;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
+// TODO: add en passant, castling and pawn promotion
 public class App extends Application {
     public static void main(String[] args) throws Exception {
         launch(args);
@@ -24,7 +25,7 @@ public class App extends Application {
         StackPane root = new StackPane();
 
         root.getChildren().add(cg.getGuiComponent());
-        cg.createNewChessGame(new RandBot(true), new RandBot(false));
+        cg.createNewChessGame(new Player(true), new RandBot(false));
 
         primaryStage.setTitle("Hello World");
         primaryStage.setScene(new Scene(root, 800, 600));

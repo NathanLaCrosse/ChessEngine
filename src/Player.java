@@ -1,5 +1,6 @@
 import java.util.LinkedList;
 
+import javafx.application.Platform;
 import javafx.util.Pair;
 
 public class Player extends Entity {
@@ -23,6 +24,10 @@ public class Player extends Entity {
         }
 
         return selectedMove; 
+    }
+
+    protected Move selectedMove() {
+        return selectedMove;
     }
 
     // selects a given move to play if the selected move is a valid move
@@ -52,5 +57,33 @@ public class Player extends Entity {
         this.selectedMove = null;
         this.selectedPiece = null;
         this.selectedPiecePos = null;
+    }
+
+    public static void createPlayerPickingThread(ChessGame cg, Player player) {
+        MovePickingThread mpt = new MovePickingThread(cg, player);
+        mpt.start();
+    }
+}
+
+// allows for move picking to work simultaneously with the javafx program
+class MovePickingThread extends Thread {
+    private Player player;
+    private ChessGame cg;
+
+    public MovePickingThread(ChessGame cg, Player player) {
+        this.player = player;
+        this.cg = cg;
+    }
+
+    @Override
+    public void run() {
+        Platform.runLater(() -> {
+            if(player.selectedMove() != null) {
+                cg.endPlayerTurn(player.selectedMove());
+            }else {
+                MovePickingThread mpt = new MovePickingThread(cg, player);
+                mpt.start();
+            }
+        });
     }
 }

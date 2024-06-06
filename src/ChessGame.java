@@ -21,6 +21,7 @@ public class ChessGame {
 
     private Entity player1;
     private Entity player2;
+    private boolean playerTrigger = false;
 
     private BoardTile[][] tiles;
 
@@ -61,6 +62,8 @@ public class ChessGame {
         this.player1 = player1;
         this.player2 = player2;
 
+        updateSprites();
+
         // create and run the game's thread process
         GameThread t = new GameThread(this);
         t.start();
@@ -68,6 +71,7 @@ public class ChessGame {
 
     // returns true if the game has ended
     protected boolean nextTurn() {
+        // TODO: check for end of game first
         validMoves = gameBoard.generateMoves(turn);
 
         Move moveToPlay = currentPlayer().selectMove(gameBoard);
@@ -81,6 +85,28 @@ public class ChessGame {
 
         turn = !turn;
         return false;
+    }
+
+    protected void triggerPlayerTurn() {
+        // TODO: check for end of game first
+
+        if(!playerTrigger) {
+            flagPlayerTrigger();
+            validMoves = gameBoard.generateMoves(turn);
+            Player.createPlayerPickingThread(this, (Player)currentPlayer());
+        }
+    }
+    protected void endPlayerTurn(Move m) {
+        if(!validMoves.contains(m)) {
+            System.out.println("Illegal Move!!!");
+        }
+
+        m.move();
+        currentPlayer().reset();
+        clearPlayerTrigger();
+        updateSprites();
+
+        turn = !turn;
     }
 
     public VBox getGuiComponent() {
@@ -100,6 +126,14 @@ public class ChessGame {
     }
     protected LinkedList<Move> getValidMoves() {
         return validMoves;
+    }
+
+    // makes sure a player's turn is only started once
+    protected void flagPlayerTrigger() {
+        playerTrigger = true;
+    }
+    protected void clearPlayerTrigger() {
+        playerTrigger = false;
     }
 
     // change the graphics of each tile if pieces have been moved    
@@ -136,9 +170,15 @@ class GameThread extends Thread {
     @Override
     public void run() {
         Platform.runLater(() -> {
-            boolean keepGoing = cg.nextTurn();
-            cg.updateSprites();
-            if(!keepGoing) {
+            if(!(cg.currentPlayer() instanceof Player)) {
+                boolean keepGoing = cg.nextTurn();
+                cg.updateSprites();
+                if(!keepGoing) {
+                    GameThread t2 = new GameThread(cg);
+                    t2.start();
+                }
+            }else {
+                cg.triggerPlayerTurn();
                 GameThread t2 = new GameThread(cg);
                 t2.start();
             }

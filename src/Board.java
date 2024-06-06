@@ -2,9 +2,6 @@
 // chess pieces are stored in an array which is accessed through a 2d array containing the chess grid
 
 import java.util.LinkedList;
-import java.util.Stack;
-
-import javafx.geometry.Side;
 import javafx.util.Pair;
 
 public class Board {
@@ -13,9 +10,6 @@ public class Board {
 
     private int[][] indexMap; // represents the grid of the chess board and contains indices which reference the piece array
     private ChessPiece[] pieces;
-
-    // stores a collection of past turns and where those attacks were to make looking for checks easier
-    private Stack<boolean[][]> previousAttackBoards;
 
     // keeps track of the kings
     private Pair<Integer, Integer> whiteKingPos;
