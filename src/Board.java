@@ -4,6 +4,8 @@
 import java.util.LinkedList;
 import javafx.util.Pair;
 
+// TODO: add end conditions to the board
+
 public class Board {
     private int xDim = 8;
     private int yDim = 8;
@@ -30,15 +32,15 @@ public class Board {
             pieces[pieceCounter + 1] = new ChessPiece(side, "Knight", 3, ChessPiece.KNIGHT_MOVES);
             pieces[pieceCounter + 2] = new ChessPiece(side, "Bishop", 3, ChessPiece.BISHOP_MOVES);
             pieces[pieceCounter + 3] = new ChessPiece(side, "Queen", 9, ChessPiece.QUEEN_MOVES);
-            pieces[pieceCounter + 4] = new King(side,  10);
+            pieces[pieceCounter + 4] = new ChessPieceKing(side,  10);
             pieces[pieceCounter + 5] = new ChessPiece(side, "Bishop", 3, ChessPiece.BISHOP_MOVES);
             pieces[pieceCounter + 6] = new ChessPiece(side, "Knight", 3, ChessPiece.KNIGHT_MOVES);
             pieces[pieceCounter + 7] = new ChessPiece(side, "Rook", 5, ChessPiece.ROOK_MOVES);
 
             if(side) {
-                whiteKingPos = new Pair<Integer, Integer>(row, 4);
+                whiteKingPos = new Pair<>(row, 4);
             }else {
-                blackKingPos = new Pair<Integer, Integer>(row, 4);
+                blackKingPos = new Pair<>(row, 4);
             }
 
             // set up indexes for row
@@ -54,7 +56,7 @@ public class Board {
             int row = side ? 6 : 1;
 
             for(int k = 0; k < 8; k++) {
-                pieces[pieceCounter] = new ChessPiece(side, "Pawn", 1, ChessPiece.DEFAULT_PAWN_MOVES);
+                pieces[pieceCounter] = new ChessPiecePawn(side);
                 indexMap[row][k] = pieceCounter;
                 pieceCounter++;
             }
@@ -67,15 +69,16 @@ public class Board {
             }
         }
 
-        //indexMap[6][0] = -1;
-        int dexVal = indexMap[whiteKingPos.getKey()][whiteKingPos.getValue()];
-        indexMap[whiteKingPos.getKey()][whiteKingPos.getValue()] = -1;
-        whiteKingPos = new Pair<Integer, Integer>(5,2);
-        indexMap[whiteKingPos.getKey()][whiteKingPos.getValue()] = dexVal;
+        // test code
+        // indexMap[6][0] = -1;
+        // int dexVal = indexMap[whiteKingPos.getKey()][whiteKingPos.getValue()];
+        // indexMap[whiteKingPos.getKey()][whiteKingPos.getValue()] = -1;
+        // whiteKingPos = new Pair<>(5,2);
+        // indexMap[whiteKingPos.getKey()][whiteKingPos.getValue()] = dexVal;
 
-        dexVal = indexMap[0][3];
-        indexMap[0][3] = -1;
-        indexMap[3][4] = dexVal;
+        // dexVal = indexMap[0][3];
+        // indexMap[0][3] = -1;
+        // indexMap[3][4] = dexVal;
     }
 
     public int getXDim() {
@@ -120,6 +123,16 @@ public class Board {
     public boolean inBounds(int row, int col) {
         return row >= 0 && row < yDim && col >= 0 && col < xDim;
     }
+    public boolean inBounds(Pair<Integer, Integer> pos) {
+        return inBounds(pos.getKey(), pos.getValue());
+    }
+    public boolean inPromotionRank(boolean side, Pair<Integer, Integer> pos) {
+        if(side) {
+            return pos.getKey() == 0;
+        }else {
+            return pos.getKey() == yDim - 1;
+        }
+    }
 
     public LinkedList<Move> generateMoves(boolean side) {
         LinkedList<Move> moves = new LinkedList<>();
@@ -133,7 +146,7 @@ public class Board {
 
                 if(piece == null || piece.getSide() != side) continue; // skip over blank spaces + pieces not on side
 
-                LinkedList<Move> pieceMoves = piece.generateMoves(this, new Pair<Integer, Integer>(i,k));
+                LinkedList<Move> pieceMoves = piece.generateMoves(this, new Pair<>(i,k));
 
                 // make sure the move doesn't lead into a checkmate
                 for(Move m : pieceMoves) {
@@ -142,6 +155,11 @@ public class Board {
                     boolean checkPresent = tileIsAttackedBySide(!side, getKingPosition(side));
 
                     m.undoMove();
+
+                    // make sure a piece doesn't intercept a castle
+                    if(!checkPresent && m instanceof MoveCastle) {
+                        checkPresent = tileIsAttackedBySide(!side, ((MoveCastle)m).getRookDest());
+                    }
 
                     if(!checkPresent) {
                         moves.add(m);
@@ -164,7 +182,7 @@ public class Board {
                 ChessPiece piece = pieces[indexMap[i][k]];
                 if(piece.getSide() != side) continue; // skip over pieces not on our side
 
-                piece.recordMovementToAttackBoard(attackBoard, this, new Pair<Integer, Integer>(i, k));
+                piece.recordMovementToAttackBoard(attackBoard, this, new Pair<>(i, k));
             }
         }
 
@@ -182,7 +200,7 @@ public class Board {
                 ChessPiece piece = pieces[indexMap[i][k]];
                 if(piece.getSide() != side) continue; // skip over opponent's pieces
 
-                piece.recordMovementToAttackBoard(attackBoard, this, new Pair<Integer, Integer>(i, k));
+                piece.recordMovementToAttackBoard(attackBoard, this, new Pair<>(i, k));
                 
                 if(attackBoard[pos.getKey()][pos.getValue()]) return true; // attack is found
             }

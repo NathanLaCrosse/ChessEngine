@@ -43,6 +43,17 @@ public class ChessPiece {
         this.hasMoved = state;
     }
 
+    // these setter methods are exclusively used by the pawn promotion move
+    protected void setName(String name) {
+        this.name = name;
+    }
+    protected void setMaterial(int material) {
+        this.material = material;
+    }
+    protected void setMoveInstructions(String[] moveInstructions) {
+        this.moveInstructions = moveInstructions;
+    }
+
     public LinkedList<Move> generateMoves(Board b, Pair<Integer, Integer> location) {
         LinkedList<Move> moves = new LinkedList<>();
 
@@ -81,9 +92,9 @@ public class ChessPiece {
                 if(destPiece == null) {
                     if(onlyCapture) break;
 
-                    moves.add(new Move(b, location, dest));
+                    addMoveToList(moves, b, location, dest);
                 }else if(destPiece.side != side && (canCapture || onlyCapture)) {
-                    moves.add(new Move(b, location, dest));
+                    addMoveToList(moves, b, location, dest);
                     
                     break;
                 }else {
@@ -100,6 +111,14 @@ public class ChessPiece {
         }
 
         return moves;
+    }
+    // helper method to reduce length in above method
+    private void addMoveToList(LinkedList<Move> moves, Board b, Pair<Integer,Integer> location, Pair<Integer, Integer> dest) {
+        if(name.equals("Pawn") && b.inPromotionRank(side, dest)) {
+            moves.add(new MovePawnPromotion(b, location, dest, "Queen", 9, ChessPiece.QUEEN_MOVES));
+        }else {
+            moves.add(new Move(b, location, dest));
+        }
     }
 
     // same process as with generating moves but instead we the value at each move's destination to true, showing there is an attack there
@@ -201,6 +220,6 @@ public class ChessPiece {
             }
         }
 
-        return new Pair<Integer, Integer>(row, col);
+        return new Pair<>(row, col);
     }
 }

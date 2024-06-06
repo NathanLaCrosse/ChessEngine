@@ -45,7 +45,7 @@ public class ChessGame {
                 // for alternating black / white color
                 boolean tileColor = (i + k) % 2 == 0;
 
-                Pair<Integer, Integer> pos = new Pair<Integer, Integer>(i,k);
+                Pair<Integer, Integer> pos = new Pair<>(i,k);
                 BoardTile tile = new BoardTile(this, tileColor, pos);
                 tiles[i][k] = tile;
 
