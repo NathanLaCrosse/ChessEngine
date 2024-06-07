@@ -12,6 +12,7 @@ public class Move {
     protected Board b;
 
     protected boolean freshlyMoved; // stores whether or not this is the first move of the piece
+    protected int previousFiftyMoveCounter; // needed for undoing moves
 
     public Move(Board b, Pair<Integer,Integer> start, Pair<Integer,Integer> dest) {
         this.b = b;
@@ -21,6 +22,8 @@ public class Move {
 
         this.startDex = b.getIndexMap()[start.getKey()][start.getValue()];
         this.endDex = b.getIndexMap()[dest.getKey()][dest.getValue()];
+
+        previousFiftyMoveCounter = b.fiftyMoveCounter;
     }
 
     // makes this move on the board, flagging certain variables if needed
@@ -36,6 +39,12 @@ public class Move {
         if(moving instanceof ChessPiecePawn) {
             ChessPiecePawn p = (ChessPiecePawn)moving;
             p.checkIfUsedStartingMove(this);
+        }
+
+        if(b.pieceAt(dest) != null) {
+            b.fiftyMoveCounter = 0;
+        }else {
+            b.fiftyMoveCounter++;
         }
 
         b.setPieceLocation(start, -1);
@@ -57,6 +66,12 @@ public class Move {
         }
         if(moving instanceof ChessPiecePawn) {
             ((ChessPiecePawn)moving).disableEnPasantFlag();
+        }
+
+        if(b.pieceAt(dest) != null) {
+            b.fiftyMoveCounter = previousFiftyMoveCounter;
+        }else {
+            b.fiftyMoveCounter--;
         }
     }
 

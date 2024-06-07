@@ -28,6 +28,8 @@ public class MoveCastle extends Move {
         b.setPieceLocation(dest, startDex);
         b.setPieceLocation(rookStart, -1);
         b.setPieceLocation(rookDest, rookStartDex);
+
+        b.fiftyMoveCounter++;
     }
 
     @Override
@@ -43,6 +45,8 @@ public class MoveCastle extends Move {
 
         ChessPiece rook = b.pieceAt(rookStart);
         rook.setIfMoved(false);
+
+        b.fiftyMoveCounter--;
     }
 
     // designed in a way that avoids aliases, so that the values of these variables cannot be changed

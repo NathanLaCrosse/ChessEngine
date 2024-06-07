@@ -14,7 +14,6 @@ public class MovePawnPromotion extends Move {
     
     @Override
     public void move() {
-        System.out.println("Done!");
         // convert the moving pawn into the new piece
         ChessPiece movingPiece = b.pieceAt(start);
         movingPiece.setName(newPieceName);

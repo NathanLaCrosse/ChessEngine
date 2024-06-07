@@ -24,6 +24,7 @@ public class ChessGame {
     private boolean playerTrigger = false;
 
     private BoardTile[][] tiles;
+    private int endCon;
 
     // used by the board tiles to figure out where a player can move
     private LinkedList<Move> validMoves = null;
@@ -61,6 +62,7 @@ public class ChessGame {
         gameBoard = new Board();
         this.player1 = player1;
         this.player2 = player2;
+        endCon = -1;
 
         updateSprites();
 
@@ -69,9 +71,11 @@ public class ChessGame {
         t.start();
     }
 
-    // returns true if the game has ended
+    // returns -1 if the game has not ended
     protected boolean nextTurn() {
-        // TODO: check for end of game first
+        endCon = gameBoard.getEndCondition(turn);
+        if(endCon != -1) return true;
+
         validMoves = gameBoard.generateMoves(turn);
 
         Move moveToPlay = currentPlayer().selectMove(gameBoard);
@@ -88,7 +92,8 @@ public class ChessGame {
     }
 
     protected void triggerPlayerTurn() {
-        // TODO: check for end of game first
+        endCon = gameBoard.getEndCondition(turn);
+        if(endCon != -1) return; // player has lost - they don't get a turn
 
         if(!playerTrigger) {
             flagPlayerTrigger();
@@ -127,6 +132,9 @@ public class ChessGame {
     protected LinkedList<Move> getValidMoves() {
         return validMoves;
     }
+    public int getEndCon() {
+        return endCon;
+    }
 
     // makes sure a player's turn is only started once
     protected void flagPlayerTrigger() {
@@ -157,6 +165,20 @@ public class ChessGame {
         }
 
     }
+
+    public static void displayGameEndMessage(ChessGame game) {
+        int endCon = game.getEndCon();
+
+        if(endCon == 0) {
+            System.out.println("Game Ended by Fifty Move Rule!");
+        }else if(endCon == 1) {
+            System.out.println("Insufficient Material!");
+        }else if(endCon == 2) {
+            System.out.println((game.turn ? "White" : "Black") + " is Checkmated!");
+        }else {
+            System.out.println("Stalemate!");
+        }
+    }
 }
 
 // this thread runs the game on the javafx thread in order to not have conflict with it
@@ -176,8 +198,15 @@ class GameThread extends Thread {
                 if(!keepGoing) {
                     GameThread t2 = new GameThread(cg);
                     t2.start();
+                }else {
+                    ChessGame.displayGameEndMessage(cg);
+                    return;
                 }
             }else {
+                if(cg.getEndCon() != -1)  {
+                    ChessGame.displayGameEndMessage(cg);
+                    return;
+                }
                 cg.triggerPlayerTurn();
                 GameThread t2 = new GameThread(cg);
                 t2.start();

@@ -4,9 +4,10 @@
 import java.util.LinkedList;
 import javafx.util.Pair;
 
-// TODO: add end conditions to the board
-
 public class Board {
+    // a chess bot will not be able to alter the counter
+    protected int fiftyMoveCounter = 0;
+
     private int xDim = 8;
     private int yDim = 8;
 
@@ -137,16 +138,13 @@ public class Board {
     public LinkedList<Move> generateMoves(boolean side) {
         LinkedList<Move> moves = new LinkedList<>();
 
-        // note for working with checks - use attack boards to figure out where an opponent may attack
-
-
         for(int i = 0; i < indexMap.length; i++) {
             for(int k = 0; k < indexMap.length; k++) {
                 ChessPiece piece = pieceAt(i, k);
 
                 if(piece == null || piece.getSide() != side) continue; // skip over blank spaces + pieces not on side
 
-                LinkedList<Move> pieceMoves = piece.generateMoves(this, new Pair<>(i,k));
+                LinkedList<Move> pieceMoves = piece.generateMoves(this, new Pair<>(i,k)); 
 
                 // make sure the move doesn't lead into a checkmate
                 for(Move m : pieceMoves) {
@@ -167,8 +165,6 @@ public class Board {
                 }
             }
         }
-
-
 
         return moves;
     }
@@ -207,5 +203,81 @@ public class Board {
         }
 
         return false;
+    }
+
+    // checks the board to determine if the inputted side is in a possible end state
+    // the possible end states are as follows (no repeat board rule)
+    // -1 - game has not ended
+    // 0 - fifty move rule
+    // 1 - insufficient material
+    // 2 - checkmate
+    // 3 - stalemate
+    public int getEndCondition(boolean side) {
+        if(fiftyMoveRuleValid()) return 0; // fifty move rule
+        if(insufficientMaterial()) return 1; // insufficient material
+
+        // look at the amount of moves available to this side
+        LinkedList<Move> availableMoves = generateMoves(side);
+
+        if(availableMoves.size() == 0) {
+            if(inCheck(side)) {
+                return 2; // checkmate
+            }else {
+                return 3; // stalemate
+            }
+        }else {
+            return -1; // game has not ended
+        }
+    }
+
+    // game is a draw if after 50 moves there hasn't been a capture
+    public boolean fiftyMoveRuleValid() {
+        return fiftyMoveCounter == 50;
+    }
+    // returns true if there is insufficient material on the board - checkmate is impossible
+    public boolean insufficientMaterial() {
+        // to begin, insufficient material can occur only when both sides have only 1 (or less) piece (besides king)
+        ChessPiece onlyWhitePiece = null;
+        Pair<Integer, Integer> whitePos = null;
+        ChessPiece onlyBlackPiece = null;
+        Pair<Integer, Integer> blackPos = null;
+
+        for(int i = 0; i < indexMap.length; i++) {
+            for(int k = 0; k < indexMap[0].length; k++) {
+                ChessPiece pieceAt = pieceAt(i, k);
+                if(pieceAt != null) {
+                    if(pieceAt.getSide()) {
+                        if(onlyWhitePiece != null) return false; // more than one white piece
+                        else if(!pieceAt.getName().equals("King")) {
+                            onlyWhitePiece = pieceAt;
+                            whitePos = new Pair<>(i, k);
+                        }
+                    }else {
+                        if(onlyBlackPiece != null) return false; // more than one black piece 
+                        else if(!pieceAt.getName().equals("King")) {
+                            onlyBlackPiece = pieceAt;
+                            blackPos = new Pair<>(i, k);
+                        }
+                    }
+                }
+            }
+        }
+
+        // if both sides have a piece, if they are both bishops on the same colored square, there is insufficient material
+        if(onlyWhitePiece != null && onlyBlackPiece != null) {
+            if(!onlyWhitePiece.getName().equals("Bishop") || !onlyBlackPiece.getName().equals("Bishop")) return false; // return if both aren't bishops
+
+            return (whitePos.getKey() + whitePos.getValue()) % 2 == (blackPos.getKey() + blackPos.getValue()) % 2; // return true if on same-colored square
+        }
+
+        // past this point there is only one piece to look at - either a white or black piece
+        ChessPiece lastPiece = onlyWhitePiece != null ? onlyWhitePiece : onlyBlackPiece;
+
+        // stalemate if this last piece is a knight or bishop
+        return lastPiece.getName().equals("Bishop") || lastPiece.getName().equals("Knight");
+    }
+    // returns true if the given side is in check
+    public boolean inCheck(boolean side) {
+        return tileIsAttackedBySide(!side, side ? whiteKingPos : blackKingPos);
     }
 }

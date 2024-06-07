@@ -21,6 +21,8 @@ public class MoveEnPassant extends Move {
         b.setPieceLocation(start, -1);
         b.setPieceLocation(capturedPawnPos, -1);
         b.setPieceLocation(dest, startDex);
+
+        b.fiftyMoveCounter = 0;
     }
 
     @Override 
@@ -32,6 +34,8 @@ public class MoveEnPassant extends Move {
         if(freshlyMoved) {
             b.pieceAt(start).setIfMoved(false);
         }
+
+        b.fiftyMoveCounter = previousFiftyMoveCounter;
     }
 
     // this get method does not create an alias so capturedPawnPos cannot be changed
