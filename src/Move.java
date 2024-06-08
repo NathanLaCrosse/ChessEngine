@@ -49,6 +49,8 @@ public class Move {
 
         b.setPieceLocation(start, -1);
         b.setPieceLocation(dest, startDex);
+
+        b.incrementMovesMade();
     }
 
     // undoes this move's change on the board
@@ -73,6 +75,8 @@ public class Move {
         }else {
             b.fiftyMoveCounter--;
         }
+
+        b.decrementMovesMade();
     }
 
     // note that these getter do not allow aliases - purely a getter, no way to change dest or start
@@ -81,6 +85,18 @@ public class Move {
     }
     public Pair<Integer, Integer> getStart() {
         return new Pair<>(start.getKey(), start.getValue());
+    }
+
+    // shorthand to access this move's pieces
+    // NOTE: this do not work properly if the move has been made
+    public ChessPiece getMovingPiece() {
+        return b.pieceAt(start);
+    }
+    public ChessPiece getCapturedPiece() {
+        return b.pieceAt(dest);
+    }
+    public boolean getSide() {
+        return getMovingPiece().getSide();
     }
 
     @Override

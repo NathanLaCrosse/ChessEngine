@@ -30,6 +30,7 @@ public class MoveCastle extends Move {
         b.setPieceLocation(rookDest, rookStartDex);
 
         b.fiftyMoveCounter++;
+        b.incrementMovesMade();
     }
 
     @Override
@@ -47,6 +48,7 @@ public class MoveCastle extends Move {
         rook.setIfMoved(false);
 
         b.fiftyMoveCounter--;
+        b.decrementMovesMade();
     }
 
     // designed in a way that avoids aliases, so that the values of these variables cannot be changed

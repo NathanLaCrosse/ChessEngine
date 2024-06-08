@@ -7,6 +7,7 @@ import javafx.util.Pair;
 public class Board {
     // a chess bot will not be able to alter the counter
     protected int fiftyMoveCounter = 0;
+    private int movesMade = 0;
 
     private int xDim = 8;
     private int yDim = 8;
@@ -118,6 +119,16 @@ public class Board {
         return pieceAt(pos.getKey(), pos.getValue());
     }
 
+    protected void incrementMovesMade() {
+        movesMade++;
+    }
+    protected void decrementMovesMade() {
+        movesMade--;
+    }
+    public int getMovesMade() {
+        return movesMade;
+    }
+
     protected int[][] getIndexMap() {
         return indexMap;
     }
@@ -133,6 +144,18 @@ public class Board {
         }else {
             return pos.getKey() == yDim - 1;
         }
+    }
+    public int materialTotalForSide(boolean side) {
+        int total = 0;
+        for(int i = 0; i < indexMap.length; i++) {
+            for(int k = 0; k < indexMap[0].length; k++) {
+                ChessPiece pieceAt = pieceAt(i, k);
+                if(pieceAt != null && pieceAt.getSide() == side && !pieceAt.getName().equals("King")) {
+                    total += pieceAt.getMaterial();
+                }
+            }
+        }
+        return total;
     }
 
     public LinkedList<Move> generateMoves(boolean side) {
