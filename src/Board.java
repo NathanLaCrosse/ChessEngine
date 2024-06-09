@@ -157,6 +157,13 @@ public class Board {
         }
         return total;
     }
+    public Pair<Integer, Integer> getKingPosOnSide(boolean side) {
+        if(side) {
+            return whiteKingPos;
+        }else {
+            return whiteKingPos;
+        }
+    }
 
     public LinkedList<Move> generateMoves(boolean side) {
         LinkedList<Move> moves = new LinkedList<>();
@@ -226,6 +233,15 @@ public class Board {
         }
 
         return false;
+    }
+
+    // returns true if the given piece can attack the given tile
+    public boolean pieceAttacksTile(ChessPiece piece, Pair<Integer, Integer> piecePos, Pair<Integer, Integer> tilePos) {
+        boolean[][] attackBoard = new boolean[yDim][xDim];
+
+        piece.recordMovementToAttackBoard(attackBoard, this, piecePos);
+
+        return attackBoard[tilePos.getKey()][tilePos.getValue()];
     }
 
     // checks the board to determine if the inputted side is in a possible end state

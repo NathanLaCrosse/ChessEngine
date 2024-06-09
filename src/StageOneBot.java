@@ -22,7 +22,7 @@ public class StageOneBot extends Entity {
     public Move selectMove(Board b) {
         moveToPlay = null;
 
-        search(b, getSide(), 6);
+        search(b, getSide(), 5);
 
         return moveToPlay;
     }
@@ -36,7 +36,7 @@ public class StageOneBot extends Entity {
         // check for a game end
         int endCon = b.getEndCondition(sideToPlay);
         if(endCon == 2) return Integer.MIN_VALUE; // we are checkmated
-        if(endCon != -1) return -1000; // some kind of draw
+        if(endCon != -1) return -100; // some kind of draw
 
         Collection<Move> orderedMoves = createOrderedMoves(b, sideToPlay);
 
@@ -90,13 +90,15 @@ public class StageOneBot extends Entity {
         if(b.inCheck(side)) {
             score -= 200;
         }else if(b.inCheck(!side)) {
-            score += 200;
+            score += b.getMovesMade() > 50 ? 700 : 200; // checks more rewarding end-game
         }
 
-        //check how many moves their king has - the less, the better
-        LinkedList<Move> enemyMoves = b.generateMoves(!side);
-        for(Move m : enemyMoves) {
-            if(m.getMovingPiece().getName().equals("King")) score -= 40;
+        //check how many moves their king has - the less, the better - only lategame tho
+        if(b.getMovesMade() > 50) {
+            LinkedList<Move> enemyMoves = b.generateMoves(!side);
+            for(Move m : enemyMoves) {
+                if(m.getMovingPiece().getName().equals("King")) score -= 200;
+            }
         }
 
         return score;
@@ -108,15 +110,20 @@ public class StageOneBot extends Entity {
         double score = 0;
         boolean side = m.getSide();
 
+        ChessPiece moving = m.getMovingPiece();
+        ChessPiece capture = m.getCapturedPiece();
+
         m.move();
 
         // perform checks that require the move made
         boolean destIsAttacked = b.tileIsAttackedBySide(!side, m.getDest());
+        boolean attacksEnemyKing = b.pieceAttacksTile(moving, m.getDest(), b.getKingPosOnSide(!side));
+        boolean moveWinsGame = b.getEndCondition(!side) == 2;
 
         m.undoMove();
 
-        ChessPiece moving = m.getMovingPiece();
-        ChessPiece capture = m.getCapturedPiece();
+        if(moveWinsGame) score += 1000000;
+
         if(capture != null) {
             //increase score if it is a positive trade or equal trade - don't make a negative trade
             int materialDif = capture.getMaterial() - moving.getMaterial();
@@ -126,25 +133,18 @@ public class StageOneBot extends Entity {
             // piece is hanging - take it based on how good it is
             if(!destIsAttacked) {
                 score += 10 * capture.getMaterial();
-            }else if(capture.getName().equals("King")) {
-                score += 30; // checks are good
             }
         }
 
-        // // give boost to get off an attacked square
-        // if(b.tileIsAttackedBySide(!side, m.getStart())) {
-        //     score += moving.getMaterial();
-        // }
+        // check with low risk - at least won't be captured
+        if(!destIsAttacked && ((capture != null && capture.getName().equals("King")) || attacksEnemyKing)) {
+            score += 30;
+        }
 
-        // // encourage early-game pawn movement
-        // if(moving.getName().equals("Pawn") && b.getMovesMade() < 4) {
-        //     score += 7;
-        // }
-
-        // // encourage moving unmoved pieces (as long as they aren't kings or rooks because of castling)
-        // if(!moving.hasMoved() && !moving.getName().equals("Rook") && !moving.getName().equals("King")) {
-        //     score += 20;
-        // }
+        // encourage moving unmoved pieces (as long as they aren't kings or rooks because of castling)
+        if(!moving.hasMoved() && !moving.getName().equals("Rook") && !moving.getName().equals("King")) {
+            score += moving.getMaterial();
+        }
 
         return score;
     }
