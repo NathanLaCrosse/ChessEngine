@@ -1,6 +1,6 @@
 // this class handles both the graphics of the chess game and
 // the turn-based structure of it
-
+// can easily be added to a javafx window
 
 import java.util.LinkedList;
 
@@ -25,9 +25,13 @@ public class ChessGame {
 
     private BoardTile[][] tiles;
     private int endCon;
+    private int winner; // 0 if draw, 1 = white, 2 = black
 
     // used by the board tiles to figure out where a player can move
     private LinkedList<Move> validMoves = null;
+
+    // used by the gui to quit an in-progress game
+    protected boolean endThreadsFlag = false; 
 
     public ChessGame() {
         guiComponent = new VBox();
@@ -36,6 +40,7 @@ public class ChessGame {
         turn = true;
         player1 = null;
         player2 = null;
+        endCon = -1;
 
         tiles = new BoardTile[8][8];
 
@@ -59,10 +64,11 @@ public class ChessGame {
     }
 
     protected void createNewChessGame(Entity player1, Entity player2) {
+        endCon = -1;
         gameBoard = new Board();
         this.player1 = player1;
         this.player2 = player2;
-        endCon = -1;
+        turn = true;
 
         updateSprites();
 
@@ -81,7 +87,10 @@ public class ChessGame {
         Move moveToPlay = currentPlayer().selectMove(gameBoard);
 
         if(!validMoves.contains(moveToPlay)) {
-            System.out.println("Illegal Move!!!");
+            System.out.println("Illegal Move! Made by: " + (turn ? "White" : "Black"));
+            gameBoard.flagIllegalMove(turn);
+            endCon = 4;
+            return true;
         }
 
         moveToPlay.move();
@@ -103,7 +112,9 @@ public class ChessGame {
     }
     protected void endPlayerTurn(Move m) {
         if(!validMoves.contains(m)) {
-            System.out.println("Illegal Move!!!");
+            System.out.println("Illegal Move! Made by: " + (turn ? "White" : "Black"));
+            gameBoard.flagIllegalMove(turn);
+            endCon = 4;
         }
 
         m.move();
@@ -135,6 +146,9 @@ public class ChessGame {
     public int getEndCon() {
         return endCon;
     }
+    public int getWinner() {
+        return winner;
+    }
 
     // makes sure a player's turn is only started once
     protected void flagPlayerTrigger() {
@@ -142,6 +156,10 @@ public class ChessGame {
     }
     protected void clearPlayerTrigger() {
         playerTrigger = false;
+    }
+
+    protected void triggerThreadFlag() {
+        endThreadsFlag = true;
     }
 
     // change the graphics of each tile if pieces have been moved    
@@ -175,8 +193,18 @@ public class ChessGame {
             System.out.println("Insufficient Material!");
         }else if(endCon == 2) {
             System.out.println((game.turn ? "White" : "Black") + " is Checkmated!");
+        }else if(endCon == 4) {
+            System.out.println((!game.turn ? "White" : "Black") + " wins due to the illegal move!");
         }else {
             System.out.println("Stalemate!");
+        }
+
+        if(endCon == 2) {
+            game.winner = !game.turn ? 1 : 2;
+        }else if(endCon == 4) {
+            game.winner = game.turn ? 2 : 1;
+        }else {
+            game.winner = -1;
         }
     }
 }
@@ -192,6 +220,8 @@ class GameThread extends Thread {
     @Override
     public void run() {
         Platform.runLater(() -> {
+            if(cg.endThreadsFlag) return; // force quit
+
             if(!(cg.currentPlayer() instanceof Player)) {
                 boolean keepGoing = cg.nextTurn();
                 cg.updateSprites();

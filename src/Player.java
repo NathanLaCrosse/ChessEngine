@@ -9,7 +9,7 @@ public class Player extends Entity {
     private Move selectedMove = null;
 
     public Player(boolean side) {
-        super(side);
+        super(side, "Player");
     }
 
     @Override

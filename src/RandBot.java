@@ -5,7 +5,7 @@ import java.util.LinkedList;
 public class RandBot extends Entity{
     
     public RandBot(boolean side) {
-        super(side);
+        super(side, "Rand Bot");
     }
 
     @Override

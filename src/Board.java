@@ -8,6 +8,7 @@ public class Board {
     // a chess bot will not be able to alter the counter
     protected int fiftyMoveCounter = 0;
     private int movesMade = 0;
+    private int illegalStateSide = -1;
 
     private int xDim = 8;
     private int yDim = 8;
@@ -185,7 +186,7 @@ public class Board {
                     m.undoMove();
 
                     // make sure a piece doesn't intercept a castle
-                    if(!checkPresent && m instanceof MoveCastle) {
+                    if(!checkPresent && m instanceof MoveCastle && !inCheck(side)) {
                         checkPresent = tileIsAttackedBySide(!side, ((MoveCastle)m).getRookDest());
                     }
 
@@ -252,6 +253,8 @@ public class Board {
     // 2 - checkmate
     // 3 - stalemate
     public int getEndCondition(boolean side) {
+        if(illegalStateSide != -1) return 4; // illegal board state
+
         if(fiftyMoveRuleValid()) return 0; // fifty move rule
         if(insufficientMaterial()) return 1; // insufficient material
 
@@ -302,6 +305,8 @@ public class Board {
             }
         }
 
+        if(onlyWhitePiece == null && onlyBlackPiece == null) return true; // only two kings left
+
         // if both sides have a piece, if they are both bishops on the same colored square, there is insufficient material
         if(onlyWhitePiece != null && onlyBlackPiece != null) {
             if(!onlyWhitePiece.getName().equals("Bishop") || !onlyBlackPiece.getName().equals("Bishop")) return false; // return if both aren't bishops
@@ -318,5 +323,10 @@ public class Board {
     // returns true if the given side is in check
     public boolean inCheck(boolean side) {
         return tileIsAttackedBySide(!side, side ? whiteKingPos : blackKingPos);
+    }
+
+    // flags if a side has made an illegal move
+    protected void flagIllegalMove(boolean side) {
+        illegalStateSide = side ? 1 : 2;
     }
 }

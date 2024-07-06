@@ -1,15 +1,14 @@
-// meant to be a simple chess bot that can still win games - at least against rand bot
-// TODO: This bot may become stronger than what we want players to face...
+// current best chess bot
 
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.TreeMap;
 
-public class StageOneBot extends Entity {
+public class ChampionBot extends Entity {
     private Move moveToPlay;
 
-    public StageOneBot(boolean side) {
-        super(side);
+    public ChampionBot(boolean side) {
+        super(side, "Champion Bot");
     }
 
     // no resetting of variables is necessary

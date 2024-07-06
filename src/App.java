@@ -19,15 +19,10 @@ public class App extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        ChessGame cg = new ChessGame();
-        
-        StackPane root = new StackPane();
+        //ChessGame cg = new ChessGame();
+        //root.getChildren().add(cg.getGuiComponent());
+        //cg.createNewChessGame(new RandBot(true), new ChampionBot(false));
 
-        root.getChildren().add(cg.getGuiComponent());
-        cg.createNewChessGame(new RandBot(true), new StageOneBot(false));
-
-        primaryStage.setTitle("Hello World");
-        primaryStage.setScene(new Scene(root, 800, 600));
-        primaryStage.show();
+        MenuManager mm = new MenuManager(primaryStage); // creation of MenuManager will handle everything
     }
 }
