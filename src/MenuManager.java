@@ -2,6 +2,8 @@
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
 
 import javax.imageio.ImageIO;
 
@@ -16,7 +18,9 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.BorderPane;
@@ -250,11 +254,43 @@ public class MenuManager {
 
         });
 
-        // button to add a new move rule to the piece
-        Button addMoveRule = new Button("Add Move Rule");
+        // buttons to add/remove moves from the custom piece
+        VBox moveCreator = new VBox();
+        HBox buttons = new HBox();
 
-        imageManager.getChildren().addAll(title, pieceName, canvas, save);
+        Button addMoveRule = new Button("Add Move Rule");
+        LinkedList<MoveRule> moveRules = new LinkedList<>();
+        VBox innerSkeleton = new VBox();
+        innerSkeleton.setSpacing(20);
+        addMoveRule.setOnMouseClicked(event -> {
+            MoveRule mr = new MoveRule(moveRules.size());
+            moveRules.add(mr);
+            innerSkeleton.getChildren().add(mr.getSkeleton());
+        });
+
+        Button removeMove = new Button("Remove Move Rule");
+        removeMove.setOnMouseClicked(event -> {
+            if(moveRules.size() <= 0) return;
+
+            innerSkeleton.getChildren().remove(moveRules.getLast().getSkeleton());
+            moveRules.removeLast();
+        });
+
+        buttons.getChildren().addAll(addMoveRule, removeMove);
+
+        // button to preview properties of the piece
+        Button preview = new Button("Preview");
+        preview.setOnMouseClicked(event -> {
+           for(MoveRule mr : moveRules) {
+                System.out.println(mr.convertToMoveInstruction());
+           }
+        });
+
+        moveCreator.getChildren().addAll(buttons, innerSkeleton);
+
+        imageManager.getChildren().addAll(title, pieceName, canvas, preview, save);
         root.setLeft(skeleton);
+        skeleton.getChildren().add(moveCreator);
 
         scene.setRoot(root);
     }
@@ -304,63 +340,174 @@ class RepeatGameThread extends Thread {
     }
 }
 
-// this class manages the "move rule" system
+// this class manages the "move rule" system so that a user can create new moves
 class MoveRule {
+    // enums to represent the various prefix/suffixes a move can have
+    // Capture availability notes how the piece interacts with the opponent's pieces
+    enum Capture_Availability {
+        NONE, ABLE, ONLY;
 
-}
-
-// enums to represent the various prefix/suffixes a move can have
-// Capture availability notes how the piece interacts with the opponent's pieces
-enum Capture_Availability {
-    NONE, ABLE, ONLY;
-
-    public String stringRep() {
-        switch(this) {
-            case NONE:
-                return "";
-            case ABLE:
-                return "C";
-            case ONLY:
-                return "O";
+        public String stringRep() {
+            switch(this) {
+                case NONE:
+                    return "";
+                case ABLE:
+                    return "C";
+                case ONLY:
+                    return "O";
+            }
+            return "error";
         }
-        return "error";
+    }
+    // denotes the various kinds of looping (SINGLE = no looping) (STARTING SEQUENCE = only 1 iteration unless the piece hasnt moved)
+    enum Looping_Type {
+        SINGLE, CONTINUOUS, SEQUENCE, STARTING_SEQUENCE, STARTING_MOVE_ONLY;
+
+        public String stringRep() {
+            switch(this) {
+                case SINGLE:
+                    return "";
+                case CONTINUOUS:
+                    return "L";
+                case SEQUENCE:
+                    return "I";
+                case STARTING_SEQUENCE:
+                    return "SI";
+                case STARTING_MOVE_ONLY:
+                    return "S";
+            }
+            return "error";
+        }
+
+        public boolean isSequence() {
+            return this == SEQUENCE || this == STARTING_SEQUENCE;
+        }
+    }
+    // stores the four directions a piece can move in
+    enum Direction {
+        NORTH, SOUTH, EAST, WEST;
+
+        public String stringRep() {
+            switch(this) {
+                case NORTH:
+                    return "N";
+                case SOUTH:
+                    return "S";
+                case EAST:
+                    return "E";
+                case WEST:
+                    return "W";
+            }
+            return "error";
+        }
+    } 
+
+    private VBox skeleton;
+    private Capture_Availability capAv;
+    private Looping_Type loopType;
+    private TextField sequenceLen, directionText;
+
+    public MoveRule(int num) {
+        capAv = Capture_Availability.NONE;
+        loopType = Looping_Type.SINGLE;
+        sequenceLen = null;
+
+        skeleton = new VBox();
+        skeleton.setSpacing(5);
+        
+        Label title = new Label("Move " + (num + 1));
+        skeleton.getChildren().add(title);
+
+        buildCaptureAvailability();
+        buildLoopingTypes();
+
+        Label directionLabel = new Label("Enter Directions With a Chain of Cardinal Directions (ex: NNE)");
+        directionText = new TextField();
+        directionText.setPromptText("Enter Directions");
+        HBox dirBox = new HBox();
+        dirBox.setSpacing(5);
+        dirBox.getChildren().addAll(directionLabel, directionText);
+
+        skeleton.getChildren().add(dirBox);
+    }
+
+    private void buildCaptureAvailability() {
+        HBox row = new HBox();
+        row.setSpacing(5);
+
+        ToggleGroup tg = new ToggleGroup();
+
+        RadioButton r1 = new RadioButton("Cannot Capture");
+        r1.setOnMouseClicked(event -> {
+            capAv = Capture_Availability.NONE;
+        });
+        RadioButton r2 = new RadioButton("Can Capture");
+        r2.setOnMouseClicked(event -> {
+            capAv = Capture_Availability.ABLE;
+        });
+        RadioButton r3 = new RadioButton("Can Only Capture");
+        r3.setOnMouseClicked(event -> {
+            capAv = Capture_Availability.ONLY;
+        });
+
+        r1.setToggleGroup(tg);
+        r2.setToggleGroup(tg);
+        r3.setToggleGroup(tg);
+
+        row.getChildren().addAll(r1, r2, r3);
+        skeleton.getChildren().add(row);
+    }
+
+    private void buildLoopingTypes() {
+        HBox row = new HBox();
+        row.setSpacing(5);
+
+        ToggleGroup tg = new ToggleGroup();
+
+        RadioButton r1 = new RadioButton("No Looping");
+        r1.setOnMouseClicked(event -> {
+            loopType = Looping_Type.SINGLE;
+        });
+        RadioButton r2 = new RadioButton("Continuous Looping");
+        r2.setOnMouseClicked(event -> {
+            loopType = Looping_Type.CONTINUOUS;
+        });
+        RadioButton r3 = new RadioButton("Sequence");
+        r3.setOnMouseClicked(event -> {
+            loopType = Looping_Type.SEQUENCE;
+        });
+        RadioButton r4 = new RadioButton("Starting Sequence");
+        r4.setOnMouseClicked(event -> {
+            loopType = Looping_Type.STARTING_SEQUENCE;
+        });
+        RadioButton r5 = new RadioButton("Starting Move Only");
+        r5.setOnMouseClicked(event -> {
+            loopType = Looping_Type.STARTING_MOVE_ONLY;
+        });
+
+        r1.setToggleGroup(tg);
+        r2.setToggleGroup(tg);
+        r3.setToggleGroup(tg);
+        r4.setToggleGroup(tg);
+        r5.setToggleGroup(tg);
+
+        HBox sequenceStuff = new HBox();
+        Label seqLabel = new Label("Sequence Length (only for sequences): ");
+        sequenceLen = new TextField();
+        sequenceLen.setPromptText("Enter Length");
+        sequenceStuff.getChildren().addAll(seqLabel, sequenceLen);
+
+        row.getChildren().addAll(r1, r2, r3, r4, r5);
+        skeleton.getChildren().addAll(row, sequenceStuff);
+    }
+
+    // takes this move's data and formats it for the chess program to use
+    public String convertToMoveInstruction() {
+        String seqLen = loopType.isSequence() ? sequenceLen.getText() : "";
+        return capAv.stringRep() + loopType.stringRep() + seqLen + "|" + directionText.getText();
+    }
+
+    public VBox getSkeleton() {
+        return skeleton;
     }
 }
-// denotes the various kinds of looping (SINGLE = no looping) (STARTING SEQUENCE = only 1 iteration unless the piece hasnt moved)
-enum Looping_Type {
-    SINGLE, CONTINUOUS, SEQUENCE, STARTING_SEQUENCE, STARTING_MOVE_ONLY;
-
-    public String stringRep() {
-        switch(this) {
-            case SINGLE:
-                return "";
-            case CONTINUOUS:
-                return "L";
-            case SEQUENCE:
-                return "I";
-            case STARTING_SEQUENCE:
-                return "SI";
-            case STARTING_MOVE_ONLY:
-                return "S";
-        }
-        return "error";
-    }
-}
-// stores the four directions a piece can move in
-enum Direction {
-    NORTH, SOUTH, EAST, WEST;
-
-    public String stringRep() {
-        switch(this) {
-            case NORTH:
-                return "N";
-            case SOUTH:
-                return "S";
-            case EAST:
-                return "E";
-            case WEST:
-                return "W";
-        }
-        return "error";
-    }
-} 
