@@ -1,0 +1,9 @@
+Board Name - TestingBoard
+Rook Knight Bishop Queen King Bishop Knight Rook 
+Pawn Pawn Pawn TestingPiece TestingPiece Pawn Pawn Pawn 
+Blank Blank Blank Blank Blank Blank Blank Blank 
+Blank Blank Blank Blank Blank Blank Blank Blank 
+Blank Blank Blank Blank Blank Blank Blank Blank 
+Blank Blank Blank Blank Blank Blank Blank Blank 
+Pawn Pawn Pawn TestingPiece TestingPiece Pawn Pawn Pawn 
+Rook Knight Bishop Queen King Bishop Knight Rook 

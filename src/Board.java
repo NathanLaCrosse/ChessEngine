@@ -5,6 +5,17 @@ import java.util.LinkedList;
 import javafx.util.Pair;
 
 public class Board {
+    public static final String[][] DEFAULT_BOARD_REP = {
+        {"Rook","Knight","Bishop","Queen","King","Bishop","Knight","Rook"},
+        {"Pawn","Pawn","Pawn","Pawn","Pawn","Pawn","Pawn","Pawn"},
+        {"Blank","Blank","Blank","Blank","Blank","Blank","Blank","Blank"},
+        {"Blank","Blank","Blank","Blank","Blank","Blank","Blank","Blank"},
+        {"Blank","Blank","Blank","Blank","Blank","Blank","Blank","Blank"},
+        {"Blank","Blank","Blank","Blank","Blank","Blank","Blank","Blank"},
+        {"Pawn","Pawn","Pawn","Pawn","Pawn","Pawn","Pawn","Pawn"},
+        {"Rook","Knight","Bishop","Queen","King","Bishop","Knight","Rook"}
+    };
+
     // a chess bot will not be able to alter the counter
     protected int fiftyMoveCounter = 0;
     private int movesMade = 0;

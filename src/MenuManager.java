@@ -1,9 +1,16 @@
 // this class manages the main GUI of athe chess program, creating the various menus and screens
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Scanner;
 
 import javax.imageio.ImageIO;
 
@@ -16,6 +23,7 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
@@ -23,11 +31,13 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
+import javafx.scene.layout.Border;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.util.Pair;
 
 public class MenuManager {
     private static final String[] BOTS = new String[]{"Champion Bot", "Rand Bot", "Player", "Horrible Bot"};
@@ -46,6 +56,7 @@ public class MenuManager {
         myStage.show();
     }
 
+    ///////////////////////////////////////////// MAIN MENU
     private void buildMainMenu() {
         BorderPane root = new BorderPane();
 
@@ -71,17 +82,62 @@ public class MenuManager {
             buildPieceCreatorScreen();
         });
 
-        skeleton.getChildren().addAll(newGame, pieceCreator);
+        Button boardCreator = new Button("Create New Board");
+        boardCreator.setOnAction(event -> {
+            buildBoardCreationScreen();
+        });
+
+        skeleton.getChildren().addAll(newGame, pieceCreator, boardCreator);
         root.setCenter(skeleton);
 
         scene.setRoot(root);
     }
 
+    ///////////////////////////////////////////// GAME CREATION CONFIG
     private void buildGameSelectionScreen() {
         BorderPane root = new BorderPane();
 
+        HBox skeleton = new HBox();
+        skeleton.setSpacing(30);
         VBox playerSelect = new VBox();
+        VBox customSettings = new VBox();
+        skeleton.getChildren().addAll(playerSelect, customSettings);
 
+        /////////////// HOMEBREW SELECTION
+        CheckBox enableCustomPieces = new CheckBox("Customized Content Enabled");
+        customSettings.getChildren().add(enableCustomPieces);
+        enableCustomPieces.setOnMouseClicked(event -> {
+
+            // if this is being unchecked, remove any boxes from customsettings that were added
+            if(!enableCustomPieces.isSelected()) {
+                while(customSettings.getChildren().size() > 1) {
+                    customSettings.getChildren().remove(1);
+                }
+                return;
+            }
+
+            // all code past this point require that the button has just been checked
+
+            HashMap<String, String[][]> boardLookup = new HashMap<>();
+            boardLookup.put("Default",Board.DEFAULT_BOARD_REP);
+            createCustomBoardLookupTable(boardLookup);
+            
+            // add all board names from the lookup to a dropdown to select a board
+            HBox boardContain = new HBox();
+            Label boardLabel = new Label("Select a loaded board: ");
+            ComboBox<String> boardSelect = new ComboBox<>();
+            boardSelect.getItems().addAll(boardLookup.keySet());
+            boardContain.getChildren().addAll(boardLabel, boardSelect);
+
+            // load up pieces for future reference
+            HashMap<String, ChessPiece> pieceLookup = new HashMap<>();
+            HashMap<String, Pair<WritableImage, WritableImage>> imageLookup = new HashMap<>();
+            createCustomPieceLookupTables(pieceLookup, imageLookup);
+
+            customSettings.getChildren().addAll(boardContain);
+        });
+
+        /////////////// PLAYER SELECT
         // create a combo box to select the white player
         HBox whitePlayer = new HBox();
         whitePlayer.setSpacing(20);
@@ -100,7 +156,7 @@ public class MenuManager {
 
         // combine into the scene
         playerSelect.getChildren().addAll(whitePlayer, blackPlayer);
-        root.setCenter(playerSelect);
+        root.setCenter(skeleton);
 
         Button startGame = new Button("Start Game");
         startGame.setOnMouseClicked(new EventHandler<Event>() {
@@ -129,7 +185,88 @@ public class MenuManager {
                 return new RandBot(side);
         }
     }
+    // create a data structure that allows for custom pieces to be looked up based on their name
+    // this is passed onto a board interpreting process so that custom boards can be loaded
+    // also imports the sprites :)
+    private void createCustomPieceLookupTables(HashMap<String, ChessPiece> pieceLookup, HashMap<String, Pair<WritableImage, WritableImage>> customSprites) {
+        try {
+            Scanner fileIn = new Scanner(new File("src/CustomData/CustomPieceData.txt"));
 
+            while (fileIn.hasNextLine()) {
+                String nameText = fileIn.nextLine().substring(12).trim();         
+                int material = Integer.parseInt(fileIn.nextLine().substring(9).trim());
+                
+                boolean[][] boolBoard = new boolean[64][64]; // for handling the sprite
+                for(int i = 0; i < 64; i++) {
+                    String dissect = fileIn.nextLine().substring(1);
+                    for(int k = 0; k < 64; k++) {
+                        boolBoard[i][k] = dissect.charAt(k) == '1';
+                    }
+                }
+                // convert boolboard into light/dark variants of the piece
+                // done twice for white/black variants
+                if(customSprites != null) {
+                    WritableImage lightVariant = new WritableImage(64, 64);
+                    WritableImage darkVariant = new WritableImage(64, 64);
+                
+                    PixelWriter lightPW = lightVariant.getPixelWriter();
+                    PixelWriter darkPW = darkVariant.getPixelWriter();
+
+                    for(int i = 0; i < 64; i++) {
+                        for(int j = 0; j < 64; j++) {
+                            if(boolBoard[i][j]) {
+                                lightPW.setColor(i, j, Color.WHITE);
+                                darkPW.setColor(i, j, Color.BLACK);
+                            }else {
+                                lightPW.setColor(i, j, new Color(0,0,0,0));
+                                darkPW.setColor(i, j, new Color(0,0,0,0));
+                            }
+                        }
+                    }
+                    Pair<WritableImage, WritableImage> pieceImgs = new Pair<>(lightVariant, darkVariant);
+                    customSprites.put(nameText, pieceImgs);
+                }
+
+                int numMoves = Integer.parseInt(fileIn.nextLine().substring(7, 8));
+                String[] moveInstructions = new String[numMoves];
+                for(int i = 0; i < moveInstructions.length; i++) {
+                    moveInstructions[i] = fileIn.nextLine().trim();
+                }
+
+                ChessPiece examplePiece = new ChessPiece(true, nameText, material, moveInstructions);
+                pieceLookup.put(nameText, examplePiece);
+            }
+            fileIn.close();
+        }catch (IOException e) {
+            System.out.println("Reading piece data failed!");
+        }
+    }
+    // loads up all of the boards saved in the customboarddata.txt file and puts them into a hashmap for later lookup
+    private void createCustomBoardLookupTable(HashMap<String, String[][]> boardLookup) { 
+        try {
+            Scanner fileIn = new Scanner(new File("src/CustomData/CustomBoardData.txt"));
+
+            while (fileIn.hasNextLine()) {
+                String boardName = fileIn.nextLine().substring(13);
+                String[][] layout = new String[8][8];
+
+                for(int i = 0; i < 8; i++) {
+                    for(int k = 0; k < 8; k++) {
+                        layout[i][k] = fileIn.next();
+                    }
+                    fileIn.nextLine();
+                }
+
+                boardLookup.put(boardName, layout);
+            }
+
+            fileIn.close();
+        }catch (IOException e) {
+            System.out.println("Reding piece data failed!");
+        }
+    }
+
+    ///////////////////////////////////////////// GAME SCREEN
     private Label p1wins;
     private Label p2wins;
     private void createChessGameView(Entity player1, Entity player2) {
@@ -178,6 +315,7 @@ public class MenuManager {
         wins[sideDex]++;
     }
 
+    ///////////////////////////////////////////// PIECE CREATOR
     private void buildPieceCreatorScreen() {
         BorderPane root = new BorderPane();
 
@@ -186,6 +324,10 @@ public class MenuManager {
         VBox moveAdditions = new VBox();
         skeleton.getChildren().addAll(imageManager, moveAdditions);
 
+        Button toMainMenu = new Button("Main Menu");
+        toMainMenu.setOnAction(event -> {
+            buildMainMenu();
+        });
         Label title = new Label("Piece Creator");
 
         // create a canvas that the user can draw their piece's art on
@@ -215,44 +357,8 @@ public class MenuManager {
 
         TextField pieceName = new TextField();
         pieceName.setPromptText("Enter Piece Name");
-
-        // button to save entire piece into memory
-        Button save = new Button("Save Piece");
-        save.setOnMouseClicked(event -> {
-            // use the values from the boolboard to write the correct pixels colors on two writable images
-            // done twice for white/black variants
-            WritableImage lightVariant = new WritableImage(64, 64);
-            WritableImage darkVariant = new WritableImage(64, 64);
-            
-            PixelWriter lightPW = lightVariant.getPixelWriter();
-            PixelWriter darkPW = darkVariant.getPixelWriter();
-
-            for(int i = 0; i < 64; i++) {
-                for(int j = 0; j < 64; j++) {
-                    if(boolBoard[i][j]) {
-                        lightPW.setColor(i, j, Color.WHITE);
-                        darkPW.setColor(i, j, Color.BLACK);
-                    }else {
-                        lightPW.setColor(i, j, new Color(0,0,0,0));
-                        darkPW.setColor(i, j, new Color(0,0,0,0));
-                    }
-                }
-            }
-
-            // write the two images into files
-            try {
-                String path = "src/CustomSprites/";
-
-                // write to file
-                ImageIO.write(SwingFXUtils.fromFXImage(lightVariant, null), "png", new File(path + "Light" + pieceName.getText() + ".png"));
-                ImageIO.write(SwingFXUtils.fromFXImage(darkVariant, null), "png", new File(path + "Dark" + pieceName.getText() + ".png"));
-                 
-                System.out.println("Saved Finished!");
-            }catch (IOException e) {
-                System.out.println("Error in saving image!");
-            }
-
-        });
+        TextField material = new TextField();
+        material.setPromptText("Enter Material");
 
         // buttons to add/remove moves from the custom piece
         VBox moveCreator = new VBox();
@@ -286,15 +392,203 @@ public class MenuManager {
            }
         });
 
+        // button to save entire piece into memory
+        Button save = new Button("Save Piece");
+        save.setOnMouseClicked(event -> {
+            String[] moveInstructions = new String[moveRules.size()];
+            Iterator<MoveRule> itr = moveRules.iterator();
+            int i = 0;
+            while(itr.hasNext()) {
+                MoveRule r = itr.next();
+                moveInstructions[i] = r.convertToMoveInstruction();
+                i++;
+            }
+
+            writePieceDataToFile(pieceName.getText(), Integer.parseInt(material.getText()), boolBoard, moveInstructions);
+        });
+
         moveCreator.getChildren().addAll(buttons, innerSkeleton);
 
-        imageManager.getChildren().addAll(title, pieceName, canvas, preview, save);
+        imageManager.getChildren().addAll(title, pieceName, material, canvas, preview, save, toMainMenu);
         root.setLeft(skeleton);
         skeleton.getChildren().add(moveCreator);
 
         scene.setRoot(root);
     }
+    // helper method to make it easier to understand how a piece's data in converted to the data file
+    private void writePieceDataToFile(String pieceName, int material, boolean[][] imgBoolBoard, String[] moveInstuctions) {
+        String dataText = "Piece Name - " + pieceName + "\nMaterial: " + material;
+        for(int i = 0; i < 64; i++) {
+            dataText += "\n[";
+            for(int j = 0; j < 64; j++) {
+                dataText += imgBoolBoard[i][j] ? 1 : 0;
+            }
+            dataText += "]";
+        }
+        dataText += "\nMoves ("+moveInstuctions.length+"):";
+        for(int i = 0; i < moveInstuctions.length; i++) {
+            dataText += "\n" + moveInstuctions[i];
+        }
+
+        try (FileWriter fw = new FileWriter("src/CustomData/CustomPieceData.txt", true) ; BufferedWriter wr = new BufferedWriter(fw)) {
+            wr.write(dataText);
+            wr.close();
+        }catch (IOException e) {
+            System.out.println("Error in writing piece data to file!");
+        }
+    }
+
+    ///////////////////////////////////////////// BOARD CREATOR
+    private static final String[] ORIGINAL_PIECES = {"King","Queen","Bishop","Knight","Rook","Pawn"};
+    private void buildBoardCreationScreen() {
+        BorderPane root = new BorderPane();
+        VBox skeleton = new VBox();
+        root.setLeft(skeleton);
+
+        Label title = new Label("Board Creator\nPlease note that the top half will be considered as black's pieces and the bottom will be white's.");
+
+        ArrayList<String> validPieceNames = new ArrayList<>();
+        validPieceNames.addAll(Arrays.asList(ORIGINAL_PIECES));
+
+        // load in the custom pieces and add them to the allowed names
+        HashMap<String, ChessPiece> pieceLookup = new HashMap<>();
+        createCustomPieceLookupTables(pieceLookup, null);
+        validPieceNames.addAll(pieceLookup.keySet());
+
+        String pieceListText = "\nValid Piece Names:\n";
+        for(String name : validPieceNames) {
+            pieceListText += "\n" + name;
+        }
+        Label allowedPieces = new Label(pieceListText + "\n");
+
+        TextField[][] positions = new TextField[8][8];
+        VBox fieldContainer = new VBox();
+
+        for(int i = 0; i < 8; i++) {
+            HBox row = new HBox();
+
+            for(int k = 0; k < 8; k++) {
+                TextField posField = new TextField();
+                posField.setPromptText("Enter Name");
+                posField.setPrefSize(100, 30);
+                positions[i][k] = posField;
+                row.getChildren().add(posField);
+            }
+
+            fieldContainer.getChildren().add(row);
+        }
+
+        HBox contain = new HBox();
+        Label namePrompt = new Label("Enter Board Name: ");
+        TextField boardName = new TextField();
+        contain.getChildren().addAll(namePrompt, boardName);
+
+        HBox saveContain = new HBox();
+        Button save = new Button("Save Board");
+        Label errorText = new Label();
+        save.setOnAction(event -> {
+            if(boardName.getText().isBlank() || allTextFieldsEmpty(positions)) {
+                errorText.setText("Cannot Create Blank Board!");
+                return;
+            }
+
+            // validate each name to make sure it corresponds to a saved piece
+            for(TextField[] tfs : positions) {
+                for(TextField tf : tfs) {
+                    // exit if unvalid names
+                    if(!validPieceNames.contains(tf.getText()) && !tf.getText().isBlank()) {
+                        errorText.setText("Invalid Name(s) Detected!");
+                        return;
+                    }
+                    if(tf.getText().equals("Blank")) {
+                        errorText.setText("Blank is a prohibited name!");
+                        return;
+                    }
+                }
+            }
+
+            // write all of the names in the textfields into the file
+            writeBoardToFile(boardName, positions);
+
+            errorText.setText("Saved Successfully!");
+        });
+        saveContain.getChildren().addAll(save, errorText);
+
+        Button mainMenu = new Button("Main Menu");
+        mainMenu.setOnAction(event -> {
+            buildMainMenu();
+        });
+
+        skeleton.getChildren().addAll(title, allowedPieces, fieldContainer, contain, saveContain, mainMenu);
+
+        scene.setRoot(root);
+    }
+    private boolean allTextFieldsEmpty(TextField[][] tfs) {
+        for(int i = 0; i < tfs.length; i++) {
+            for(int k = 0; k < tfs[0].length; k++) {
+                if(!tfs[i][k].getText().isBlank()) return false;
+            }
+        }
+        return true;
+    }
+    private void writeBoardToFile(TextField boardName, TextField[][] tfs) {
+        String dataText = "Board Name - " + boardName.getText();
+        
+        for(int i = 0; i < tfs.length; i++) {
+            dataText += "\n";
+            for(int k = 0; k < tfs[0].length; k++) {
+                if(tfs[i][k].getText().isEmpty()) {
+                    dataText += "Blank ";
+                }else {
+                    dataText += tfs[i][k].getText() + " ";
+                }
+            }
+        }
+
+        try (FileWriter fw = new FileWriter("src/CustomData/CustomBoardData.txt", true) ; BufferedWriter wr = new BufferedWriter(fw)) {
+            wr.write(dataText);
+            wr.close();
+        }catch (IOException e) {
+            System.out.println("Error in writing piece data to file!");
+        }
+    }
 }
+
+/**
+ * Some old code for saving images
+ * // use the values from the boolboard to write the correct pixels colors on two writable images
+            // done twice for white/black variants
+            WritableImage lightVariant = new WritableImage(64, 64);
+            WritableImage darkVariant = new WritableImage(64, 64);
+            
+            PixelWriter lightPW = lightVariant.getPixelWriter();
+            PixelWriter darkPW = darkVariant.getPixelWriter();
+
+            for(int i = 0; i < 64; i++) {
+                for(int j = 0; j < 64; j++) {
+                    if(boolBoard[i][j]) {
+                        lightPW.setColor(i, j, Color.WHITE);
+                        darkPW.setColor(i, j, Color.BLACK);
+                    }else {
+                        lightPW.setColor(i, j, new Color(0,0,0,0));
+                        darkPW.setColor(i, j, new Color(0,0,0,0));
+                    }
+                }
+            }
+
+            // write the two images into files
+            try {
+                String path = "src/CustomData/";
+
+                // write to file
+                ImageIO.write(SwingFXUtils.fromFXImage(lightVariant, null), "png", new File(path + "Light" + pieceName.getText() + ".png"));
+                ImageIO.write(SwingFXUtils.fromFXImage(darkVariant, null), "png", new File(path + "Dark" + pieceName.getText() + ".png"));
+                 
+                System.out.println("Saved Finished!");
+            }catch (IOException e) {
+                System.out.println("Error in saving image!");
+            }
+*/
 
 // this class is used to start a new game once one has finished
 // this is for when a chess game is actually running
