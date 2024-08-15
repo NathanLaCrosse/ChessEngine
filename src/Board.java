@@ -1,10 +1,15 @@
 // the board class manages a chess board
 // chess pieces are stored in an array which is accessed through a 2d array containing the chess grid
 
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map.Entry;
+
+import javafx.scene.image.WritableImage;
 import javafx.util.Pair;
 
 public class Board {
+    // the following static data members are needed to allow for new boards and pieces to be added on top of the traditional chess game
     public static final String[][] DEFAULT_BOARD_REP = {
         {"Rook","Knight","Bishop","Queen","King","Bishop","Knight","Rook"},
         {"Pawn","Pawn","Pawn","Pawn","Pawn","Pawn","Pawn","Pawn"},
@@ -15,6 +20,29 @@ public class Board {
         {"Pawn","Pawn","Pawn","Pawn","Pawn","Pawn","Pawn","Pawn"},
         {"Rook","Knight","Bishop","Queen","King","Bishop","Knight","Rook"}
     };
+    private static HashMap<String, ChessPiece> VANILLA_PIECE_LOOKUP = buildLookup();
+    private static HashMap<String, ChessPiece> buildLookup() {
+        HashMap<String, ChessPiece> pieceMap = new HashMap<>();
+
+        pieceMap.put("Pawn", new ChessPiecePawn(true));
+        pieceMap.put("Bishop", new ChessPiece(true, "Bishop", 3, ChessPiece.BISHOP_MOVES));
+        pieceMap.put("Knight", new ChessPiece(true, "Knight", 3, ChessPiece.KNIGHT_MOVES));
+        pieceMap.put("Rook", new ChessPiece(true, "Rook", 5, ChessPiece.ROOK_MOVES));
+        pieceMap.put("Queen", new ChessPiece(true, "Queen", 9, ChessPiece.QUEEN_MOVES));
+        pieceMap.put("King", new ChessPieceKing(true, 10));
+
+        return pieceMap;
+    }
+    public static HashMap<String, ChessPiece> cloneVanillaPieceLookup() {
+        HashMap<String, ChessPiece> clone = new HashMap<>();
+        for(Entry<String, ChessPiece> pair : VANILLA_PIECE_LOOKUP.entrySet()) {
+            clone.put(pair.getKey(), pair.getValue());
+        }
+        return clone;
+    }
+    // sprites for any custom pieces
+    private HashMap<String, Pair<WritableImage, WritableImage>> imageLookup;
+    public HashMap<String, Pair<WritableImage, WritableImage>> getImageLookup() {return imageLookup;}
 
     // a chess bot will not be able to alter the counter
     protected int fiftyMoveCounter = 0;
@@ -31,68 +59,53 @@ public class Board {
     private Pair<Integer, Integer> whiteKingPos;
     private Pair<Integer, Integer> blackKingPos;
 
-    public Board() {
+    public Board(String[][] boardLayout, HashMap<String, ChessPiece> pieceLookup, HashMap<String, Pair<WritableImage, WritableImage>> imageLookup) {
         indexMap = new int[8][8];
-        pieces = new ChessPiece[32];
+
+        // determine how many pieces are on the board
+        int totalPieces = 0;
+        for(String[] row : boardLayout) {
+            for(String str : row) {
+                if(!str.equals("Blank")) totalPieces++;
+            }
+        }
+        pieces = new ChessPiece[totalPieces];
 
         int pieceCounter = 0;
-
-        // add populated rows first
-        for(int i = 0; i < 2; i++) {
-            boolean side = i == 0;
-            int row = side ? 7 : 0;
-
-            pieces[pieceCounter] = new ChessPiece(side, "Rook", 5, ChessPiece.ROOK_MOVES);
-            pieces[pieceCounter + 1] = new ChessPiece(side, "Knight", 3, ChessPiece.KNIGHT_MOVES);
-            pieces[pieceCounter + 2] = new ChessPiece(side, "Bishop", 3, ChessPiece.BISHOP_MOVES);
-            pieces[pieceCounter + 3] = new ChessPiece(side, "Queen", 9, ChessPiece.QUEEN_MOVES);
-            pieces[pieceCounter + 4] = new ChessPieceKing(side,  10);
-            pieces[pieceCounter + 5] = new ChessPiece(side, "Bishop", 3, ChessPiece.BISHOP_MOVES);
-            pieces[pieceCounter + 6] = new ChessPiece(side, "Knight", 3, ChessPiece.KNIGHT_MOVES);
-            pieces[pieceCounter + 7] = new ChessPiece(side, "Rook", 5, ChessPiece.ROOK_MOVES);
-
-            if(side) {
-                whiteKingPos = new Pair<>(row, 4);
-            }else {
-                blackKingPos = new Pair<>(row, 4);
-            }
-
-            // set up indexes for row
+        for(int i = 0; i < 8; i++) {
+            boolean side = i < 4 ? false : true;
             for(int k = 0; k < 8; k++) {
-                indexMap[row][k] = pieceCounter;
-                pieceCounter++;
+                String str = boardLayout[i][k];
+
+                if(str.equals("Blank")) {
+                    indexMap[i][k] = -1;
+                }else {
+                    ChessPiece foundPiece = pieceLookup.get(str); // grab piece to copy
+                    ChessPiece newPiece;
+                    if(foundPiece instanceof ChessPieceKing) {
+                        newPiece = new ChessPieceKing(side, 10);
+                        if(side) {
+                            whiteKingPos = new Pair<>(i, k);
+                        }else {
+                            blackKingPos = new Pair<>(i, k);
+                        }
+                    }else if(foundPiece instanceof ChessPiecePawn) {
+                        newPiece = new ChessPiecePawn(side);
+                    }else {
+                        // build a copy of this piece's moves
+                        String[] copyMoves = new String[foundPiece.getNumMoves()];
+                        for(int j = 0; j < copyMoves.length; j++) {copyMoves[j] = foundPiece.getMove(j);}
+                        newPiece = new ChessPiece(side, str, foundPiece.getMaterial(), copyMoves);
+                    }
+
+                    pieces[pieceCounter] = newPiece;
+                    indexMap[i][k] = pieceCounter;
+                    pieceCounter++;
+                }
             }
         }
 
-        // fill in pawns
-        for(int i = 0; i < 2; i++) {
-            boolean side = i == 0;
-            int row = side ? 6 : 1;
-
-            for(int k = 0; k < 8; k++) {
-                pieces[pieceCounter] = new ChessPiecePawn(side);
-                indexMap[row][k] = pieceCounter;
-                pieceCounter++;
-            }
-        }
-
-        // set all other spaces to -1
-        for(int i = 2; i < 6; i++) {
-            for(int k = 0; k < 8; k++) {
-                indexMap[i][k] = -1;
-            }
-        }
-
-        // test code
-        // indexMap[6][0] = -1;
-        // int dexVal = indexMap[whiteKingPos.getKey()][whiteKingPos.getValue()];
-        // indexMap[whiteKingPos.getKey()][whiteKingPos.getValue()] = -1;
-        // whiteKingPos = new Pair<>(5,2);
-        // indexMap[whiteKingPos.getKey()][whiteKingPos.getValue()] = dexVal;
-
-        // dexVal = indexMap[0][3];
-        // indexMap[0][3] = -1;
-        // indexMap[3][4] = dexVal;
+        this.imageLookup = imageLookup;
     }
 
     public int getXDim() {

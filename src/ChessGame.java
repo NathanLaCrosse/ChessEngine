@@ -2,12 +2,14 @@
 // the turn-based structure of it
 // can easily be added to a javafx window
 
+import java.util.HashMap;
 import java.util.LinkedList;
 
 import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Pair;
@@ -63,9 +65,9 @@ public class ChessGame {
         updateSprites();
     }
 
-    protected void createNewChessGame(Entity player1, Entity player2) {
+    protected void createNewChessGame(Entity player1, Entity player2, String[][] boardLayout, HashMap<String, ChessPiece> pieceLookup, HashMap<String, Pair<WritableImage, WritableImage>> imagelookup) {
         endCon = -1;
-        gameBoard = new Board();
+        gameBoard = new Board(boardLayout, pieceLookup, imagelookup);
         this.player1 = player1;
         this.player2 = player2;
         turn = true;
@@ -322,6 +324,9 @@ class BoardTile {
         //selectedKing = null;
     }
 
+    private static boolean isVanillaPiece(String pieceName) {
+        return pieceName.equals("Pawn") || pieceName.equals("Bishop") || pieceName.equals("Knight") || pieceName.equals("Rook") || pieceName.equals("Queen") || pieceName.equals("King");
+    }
     public void determinePieceSprite() {
         if(game.getGameBoard() == null) {
             pieceDraw.setImage(new Image(this.getClass().getResourceAsStream("Sprites/Blank.png")));
@@ -330,12 +335,15 @@ class BoardTile {
 
         ChessPiece pieceOnTile = game.getGameBoard().pieceAt(posOnBoard);
 
-        String nameOfSprite = "Blank";
+        Image img = new Image(this.getClass().getResourceAsStream("Sprites/Blank.png"));
         if(pieceOnTile != null) {
-            nameOfSprite = (pieceOnTile.getSide() ? "Light" : "Dark") + pieceOnTile.getName(); // assumes the piece name lines up with the file names (rook should be "Rook")
+            if(isVanillaPiece(pieceOnTile.getName())) {
+                String pieceName = (pieceOnTile.getSide() ? "Light" : "Dark") + pieceOnTile.getName();
+                img = new Image(this.getClass().getResourceAsStream("Sprites/"+pieceName+".png"));
+            }else {
+                img = pieceOnTile.getSide() ? game.getGameBoard().getImageLookup().get(pieceOnTile.getName()).getKey() : game.getGameBoard().getImageLookup().get(pieceOnTile.getName()).getValue();
+            }
         }
-
-        Image img = new Image(this.getClass().getResourceAsStream("Sprites/"+nameOfSprite+".png"));
 
         pieceDraw.setImage(img);
     }

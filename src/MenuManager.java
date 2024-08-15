@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map.Entry;
 import java.util.Scanner;
 
 import javax.imageio.ImageIO;
@@ -94,6 +95,10 @@ public class MenuManager {
     }
 
     ///////////////////////////////////////////// GAME CREATION CONFIG
+    private static HashMap<String, String[][]> boardLookup = null;
+    private static HashMap<String, ChessPiece> customPieceLookup = null;
+    private static HashMap<String, Pair<WritableImage, WritableImage>> imageLookup = null;
+    private static ComboBox<String> selectedBoardName = null;
     private void buildGameSelectionScreen() {
         BorderPane root = new BorderPane();
 
@@ -118,21 +123,21 @@ public class MenuManager {
 
             // all code past this point require that the button has just been checked
 
-            HashMap<String, String[][]> boardLookup = new HashMap<>();
+            boardLookup = new HashMap<>();
             boardLookup.put("Default",Board.DEFAULT_BOARD_REP);
             createCustomBoardLookupTable(boardLookup);
             
             // add all board names from the lookup to a dropdown to select a board
             HBox boardContain = new HBox();
             Label boardLabel = new Label("Select a loaded board: ");
-            ComboBox<String> boardSelect = new ComboBox<>();
-            boardSelect.getItems().addAll(boardLookup.keySet());
-            boardContain.getChildren().addAll(boardLabel, boardSelect);
+            selectedBoardName = new ComboBox<>();
+            selectedBoardName.getItems().addAll(boardLookup.keySet());
+            boardContain.getChildren().addAll(boardLabel, selectedBoardName);
 
             // load up pieces for future reference
-            HashMap<String, ChessPiece> pieceLookup = new HashMap<>();
-            HashMap<String, Pair<WritableImage, WritableImage>> imageLookup = new HashMap<>();
-            createCustomPieceLookupTables(pieceLookup, imageLookup);
+            customPieceLookup = new HashMap<>();
+            imageLookup = new HashMap<>();
+            createCustomPieceLookupTables(customPieceLookup, imageLookup);
 
             customSettings.getChildren().addAll(boardContain);
         });
@@ -163,7 +168,14 @@ public class MenuManager {
 
             @Override
             public void handle(Event arg0) {
-                createChessGameView(createEntityBasedOnString(whitePlayerSelected.getSelectionModel().getSelectedItem(), true), createEntityBasedOnString(blackPlayerSelected.getSelectionModel().getSelectedItem(), false));
+                Entity player1 = createEntityBasedOnString(whitePlayerSelected.getSelectionModel().getSelectedItem(), true);
+                Entity player2 = createEntityBasedOnString(blackPlayerSelected.getSelectionModel().getSelectedItem(), false);
+
+                if(!enableCustomPieces.isSelected()) {
+                    createChessGameView(player1, player2, Board.DEFAULT_BOARD_REP, null, null);
+                }else {
+                    createChessGameView(player1, player2, boardLookup.get(selectedBoardName.getValue()), customPieceLookup, imageLookup);
+                }
             }
             
         });
@@ -269,17 +281,28 @@ public class MenuManager {
     ///////////////////////////////////////////// GAME SCREEN
     private Label p1wins;
     private Label p2wins;
-    private void createChessGameView(Entity player1, Entity player2) {
+    private void createChessGameView(Entity player1, Entity player2, String[][] boardStr, HashMap<String, ChessPiece> customPieces, HashMap<String, Pair<WritableImage, WritableImage>> customPieceImages) {
         wins = new int[]{0,0};
         BorderPane root = new BorderPane();
         ChessGame cg = new ChessGame();
 
         HBox layout = new HBox();
+        RepeatGameThread rgt = null;
 
-        // set up chess game
-        cg.createNewChessGame(player1, player2);
+        // set up chess game - this is more complicated if homebrew pieces/maps are involved
+        if(customPieces == null) {
+            cg.createNewChessGame(player1, player2, Board.DEFAULT_BOARD_REP, null, null);
+            rgt = new RepeatGameThread(player1, player2, cg, this, Board.DEFAULT_BOARD_REP, null, null);
+        }else {
+            HashMap<String, ChessPiece> completePieceLookup = Board.cloneVanillaPieceLookup();
+            for(Entry<String,ChessPiece> pair : customPieces.entrySet()) {
+                completePieceLookup.put(pair.getKey(), pair.getValue());
+            }
+
+            cg.createNewChessGame(player1, player2, boardStr, completePieceLookup, imageLookup);
+            rgt = new RepeatGameThread(player1, player2, cg, this, boardStr, completePieceLookup, customPieceImages);
+        }
         layout.getChildren().add(cg.getGuiComponent());
-        RepeatGameThread rgt = new RepeatGameThread(player1, player2, cg, this);
         rgt.start();
 
         VBox statBlock = new VBox();
@@ -595,14 +618,23 @@ public class MenuManager {
 class RepeatGameThread extends Thread {
     private Entity player1;
     private Entity player2;
+
+    private String[][] boardLayout;
+    private HashMap<String, ChessPiece> pieceLookup;
+    private HashMap<String, Pair<WritableImage, WritableImage>> imageLookup;
+
     private ChessGame cg;
     private MenuManager mm;
 
-    public RepeatGameThread(Entity player1, Entity player2, ChessGame cg, MenuManager mm) {
+    public RepeatGameThread(Entity player1, Entity player2, ChessGame cg, MenuManager mm, String[][] boardLayout, HashMap<String, ChessPiece> pieceLookup, HashMap<String, Pair<WritableImage, WritableImage>> imageLookup) {
         this.player1 = player1;
         this.player2 = player2;
         this.cg = cg;
         this.mm = mm;
+
+        this.boardLayout = boardLayout;
+        this.pieceLookup = pieceLookup;
+        this.imageLookup = imageLookup;
     }
 
     @Override
@@ -610,7 +642,7 @@ class RepeatGameThread extends Thread {
         Platform.runLater(() -> {
             // repeat thread until endCon != -1 by creating a new thread every check
             if(cg.getEndCon() == -1) {
-                RepeatGameThread rgt = new RepeatGameThread(player1, player2, cg, mm);
+                RepeatGameThread rgt = new RepeatGameThread(player1, player2, cg, mm, boardLayout, pieceLookup, imageLookup);
                 rgt.start();
                 return;
             }
@@ -625,10 +657,10 @@ class RepeatGameThread extends Thread {
             mm.updateWinsText();
 
             // begin new game
-            cg.createNewChessGame(player1, player2);
+            cg.createNewChessGame(player1, player2, boardLayout, pieceLookup, imageLookup);
 
             // repeat thread
-            RepeatGameThread rgt = new RepeatGameThread(player1, player2, cg, mm);
+            RepeatGameThread rgt = new RepeatGameThread(player1, player2, cg, mm, boardLayout, pieceLookup, imageLookup);
             rgt.start();
         });
     }

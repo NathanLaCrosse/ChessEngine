@@ -39,6 +39,15 @@ public class ChessPiece {
         return hasMoved;
     }
 
+    public int getNumMoves() {
+        return moveInstructions.length;
+    }
+    public String getMove(int index) {
+        if(index < 0 || index >= moveInstructions.length) return "NULL";
+
+        return moveInstructions[index];
+    }
+
     protected void setIfMoved(boolean state) {
         this.hasMoved = state;
     }
