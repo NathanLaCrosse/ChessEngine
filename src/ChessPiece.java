@@ -105,7 +105,11 @@ public class ChessPiece {
                 }else if(destPiece.side != side && (canCapture || onlyCapture)) {
                     addMoveToList(moves, b, location, dest);
                     
-                    break;
+                    if(onlyCapture && sequence != 0) {
+                        // if a sequence is only capture this allows it to target another piece past this one
+                    }else {
+                        break;
+                    }
                 }else {
                     break;
                 }
@@ -173,7 +177,11 @@ public class ChessPiece {
                 }else if(destPiece != null && destPiece.side != side && (canCapture || onlyCapture)) {
                     attackBoard[dest.getKey()][dest.getValue()] = true;
                     
-                    break;
+                    if(onlyCapture && sequence != 0) {
+                        // if a sequence is only capture this allows it to target another piece past this one
+                    }else {
+                        break;
+                    }
                 }else {
                     break;
                 }
