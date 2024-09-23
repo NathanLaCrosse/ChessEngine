@@ -292,7 +292,7 @@ public class MenuManager {
         // set up chess game - this is more complicated if homebrew pieces/maps are involved
         if(customPieces == null) {
             cg.createNewChessGame(player1, player2, Board.DEFAULT_BOARD_REP, Board.cloneVanillaPieceLookup(), null);
-            rgt = new RepeatGameThread(player1, player2, cg, this, Board.DEFAULT_BOARD_REP, null, null);
+            rgt = new RepeatGameThread(player1, player2, cg, this, Board.DEFAULT_BOARD_REP, Board.cloneVanillaPieceLookup(), null);
         }else {
             HashMap<String, ChessPiece> completePieceLookup = Board.cloneVanillaPieceLookup();
             for(Entry<String,ChessPiece> pair : customPieces.entrySet()) {
